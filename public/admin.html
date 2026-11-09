@@ -1,0 +1,72 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>餐饮图鉴 · 管理端</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%237a1024'/%3E%3Ctext x='32' y='45' font-size='36' text-anchor='middle' fill='%23fff' font-family='serif'%3E食%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/assets/style.css?v=7">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-in">
+    <a class="brand" href="/">
+      <span class="seal">食</span>
+      <span><b>餐饮图鉴 · 管理端</b><br><span>ADMIN</span></span>
+    </a>
+    <div class="spacer"></div>
+    <a class="ghost" href="/">← 回到前台</a>
+  </div>
+</nav>
+
+<main class="admin-main">
+
+  <!-- 登录 -->
+  <section id="login" class="login-card">
+    <h2>输入管理口令</h2>
+    <p>口令来自服务器环境变量 <code>ADMIN_TOKEN</code>，只保存在本机浏览器里。看得见、改得动，靠它区分游客和主人。</p>
+    <div class="field">
+      <label for="tokenInput">管理口令</label>
+      <input id="tokenInput" type="password" placeholder="ADMIN_TOKEN" autocomplete="current-password">
+    </div>
+    <button class="btn primary" id="loginBtn" style="width:100%">进入管理端</button>
+    <p class="hint" id="loginMsg" style="margin-top:12px"></p>
+  </section>
+
+  <!-- 主体 -->
+  <section id="app" hidden>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>商家列表</h2>
+        <span class="hint" id="summary"></span>
+        <div style="flex:1"></div>
+        <input id="aq" placeholder="搜索店名 / 菜名 / 地址" style="border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:#fff;width:200px">
+        <select id="acat" class="sort" style="padding:8px 10px"></select>
+        <button class="btn primary" id="newBtn">＋ 新增商家</button>
+        <button class="btn" id="logoutBtn">退出</button>
+      </div>
+      <div style="overflow:auto">
+        <table class="list">
+          <thead>
+            <tr><th style="width:66px">封面</th><th>店名 / 招牌菜</th><th style="width:88px">分类</th>
+                <th style="width:96px">评分</th><th style="width:100px">更新时间</th><th style="width:158px">操作</th></tr>
+          </thead>
+          <tbody id="rows"><tr><td colspan="6" class="hint" style="padding:24px">加载中…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- 编辑抽屉 -->
+<div class="drawer" id="drawer" aria-hidden="true">
+  <div class="pane" id="pane"></div>
+</div>
+
+<div class="toast-wrap" id="toasts"></div>
+<script src="/assets/admin.js?v=5"></script>
+</body>
+</html>
+
+

@@ -1,0 +1,81 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>餐饮图鉴 · 自己人的美食册</title>
+<meta name="description" content="记下自己吃过的店：招牌菜、评分、电话、位置和原图，一页一家。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%237a1024'/%3E%3Ctext x='32' y='45' font-size='36' text-anchor='middle' fill='%23fff' font-family='serif'%3E食%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/assets/style.css?v=7">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-in">
+    <a class="brand" href="/">
+      <span class="seal">食</span>
+      <span><b>餐饮图鉴</b><br><span>CAN YIN TU JIAN</span></span>
+    </a>
+    <div class="spacer"></div>
+    <button class="ghost add-entry" id="addBtn" type="button">＋ 登记商户</button>
+    <a class="ghost" href="/admin">管理端 →</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <h1>把好吃的，<em>留在册子里</em></h1>
+  <p>自己人吃出来的店单：店名、招牌菜、评分、电话、位置和实拍原图，一页一家，随手翻。数据存在自己的 MySQL 里。</p>
+</header>
+
+<section class="stats" id="stats">
+  <div class="stat"><b>—</b><span>家商家</span></div>
+  <div class="stat"><b>—</b><span>张实拍</span></div>
+  <div class="stat"><b>—</b><span>道招牌菜</span></div>
+  <div class="stat"><b>—</b><span>平均分</span></div>
+</section>
+
+<div class="toolbar-wrap">
+  <div class="toolbar">
+    <div class="search">
+      <input id="q" type="search" placeholder="搜店名、招牌菜、地址、备注…" autocomplete="off" aria-label="搜索">
+      <span class="icon" aria-hidden="true">⌕</span>
+    </div>
+    <select class="sort" id="sort" aria-label="排序">
+      <option value="updated">最近更新</option>
+      <option value="recommend">推荐指数</option>
+      <option value="rating">评分最高</option>
+      <option value="name">名称 A→Z</option>
+    </select>
+  </div>
+  <div class="chips" id="chips"></div>
+</div>
+
+<main>
+  <div class="count" id="count">正在翻册子…</div>
+  <div class="grid" id="grid">
+    <div class="skeleton"><div class="sk-cover"></div><div class="sk-line"></div><div class="sk-line short"></div></div>
+    <div class="skeleton"><div class="sk-cover"></div><div class="sk-line"></div><div class="sk-line short"></div></div>
+    <div class="skeleton"><div class="sk-cover"></div><div class="sk-line"></div><div class="sk-line short"></div></div>
+  </div>
+</main>
+
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-label="商家详情">
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<!-- 前台登记商户 -->
+<div class="drawer" id="addDrawer" aria-hidden="true">
+  <div class="pane" id="addPane"></div>
+</div>
+
+<div class="toast-wrap" id="toasts"></div>
+
+<footer class="site">
+  <b>餐饮图鉴</b> · Node + MySQL 版 · 图片存服务器原图，数据库只存索引
+</footer>
+
+<script src="/assets/app.js?v=8"></script>
+</body>
+</html>
+
+
