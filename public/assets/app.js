@@ -31,7 +31,7 @@ function coverTag(url, name, cls) {
   const ch = esc((name || "食").slice(0, 1));
   return '<div class="' + (cls || "cover") + '">' +
     '<div class="ph">' + ch + "</div>" +
-    (url ? '<img src="' + esc(url) + '" alt="' + esc(name) + '" loading="lazy" onerror="this.remove()">' : "") +
+    (url ? '<img src="' + esc(url) + '" alt="' + esc(name) + '" onerror="this.remove()">' : "") +
     "</div>";
 }
 
@@ -120,7 +120,7 @@ function renderList() {
     return '<button class="card" data-id="' + esc(s.id) + '" aria-label="查看 ' + esc(s.name) + '">' +
       coverTag(s.cover, s.name) +
       (s.category ? '<span class="badge-cat">' + esc(s.category) + "</span>" : "") +
-      (s.imageCount ? '<span class="badge-img">图 ' + s.imageCount + "</span>" : "") +
+      (s.imageCount ? '<span class="badge-img">' + s.imageCount + " 张</span>" : "") +
       '<div class="body">' +
         "<h3>" + esc(s.name) + "</h3>" +
         '<div class="rate"><b>' + (s.rating || 0).toFixed(1) + "</b>" + stars(s.rating) +

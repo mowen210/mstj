@@ -129,7 +129,7 @@ select.sort {
 main { max-width: 1180px; margin: 0 auto; padding: 8px 22px 60px; }
 .count { font-size: 13px; color: var(--ink-3); margin: 4px 2px 14px; }
 
-.grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(292px, 1fr)); }
+.grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
 
 .card {
   position: relative;
@@ -142,11 +142,10 @@ main { max-width: 1180px; margin: 0 auto; padding: 8px 22px 60px; }
 .card:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 .cover {
-  position: relative; aspect-ratio: 16 / 10; background: #efe3d2;
+  position: relative; aspect-ratio: 4 / 3; background: #efe3d2;
   overflow: hidden;
 }
-.cover img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .5s; }
-.card:hover .cover img { transform: scale(1.04); }
+.cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .cover .ph {
   position: absolute; inset: 0; display: grid; place-items: center;
   font-family: var(--serif); font-size: 44px; color: rgba(122, 16, 36, .28);
@@ -155,13 +154,13 @@ main { max-width: 1180px; margin: 0 auto; padding: 8px 22px 60px; }
     linear-gradient(140deg, #f6e9d8, #efdcc6);
 }
 .badge-cat {
-  position: absolute; left: 10px; top: 10px; z-index: 2;
+  position: absolute; right: 10px; top: 10px; z-index: 2;
   background: rgba(255, 255, 255, .93); color: var(--wine);
   border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600;
   letter-spacing: .3px; box-shadow: 0 4px 12px -6px rgba(0, 0, 0, .4);
 }
 .badge-img {
-  position: absolute; right: 10px; top: 10px; z-index: 2;
+  position: absolute; left: 10px; top: 10px; z-index: 2;
   background: rgba(24, 18, 14, .55); color: #fff;
   border-radius: 999px; padding: 3px 9px; font-size: 11.5px;
 }
