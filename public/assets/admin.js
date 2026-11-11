@@ -15,9 +15,6 @@ const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => (
   { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
 ));
 
-/* 本地图片追加缩放参数（?w=），外链原样返回 */
-const imgSrc = (u, w) => (!u || !w || !/^\/files\//.test(u)) ? u : u + "?w=" + w;
-
 function toast(msg, kind) {
   const el = document.createElement("div");
   el.className = "toast " + (kind || "");
@@ -130,7 +127,7 @@ function renderRows() {
   }
   $("#rows").innerHTML = shops.map(s => {
     const thumb = s.cover
-      ? '<img class="thumb" src="' + esc(imgSrc(s.cover, 320)) + '" alt="" onerror="this.style.display=\'none\'">'
+      ? '<img class="thumb" src="' + esc(s.cover) + '" alt="" onerror="this.style.display=\'none\'">'
       : '<div class="thumb ph">' + esc((s.name || "食").slice(0, 1)) + "</div>";
     const dishes = (s.dishes || []).slice(0, 4).map(d => esc(d.name)).join("、") || "—";
     return "<tr>" +
@@ -257,7 +254,7 @@ function addDishRow(name, price) {
 
 function renderImgs() {
   $("#imgGrid").innerHTML = editImages.map((u, i) =>
-    '<div class="img-item"><img src="' + esc(imgSrc(u, 320)) + '" alt="" title="点击设为封面" data-i="' + i + '" ' +
+    '<div class="img-item"><img src="' + esc(u) + '" alt="" title="点击设为封面" data-i="' + i + '" ' +
       'onerror="this.parentNode.style.opacity=.35">' +
       '<button type="button" data-del="' + i + '" title="移除">×</button></div>'
   ).join("") || '<span class="hint">还没有图片</span>';

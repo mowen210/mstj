@@ -36,7 +36,7 @@
 | 图片 | 数组里塞 URL，删图要遍历所有商家 | `shop_images` 独立表，可单独增删排序，外键级联清理 |
 | 招牌菜 | 内嵌 JSON 数组，没法按菜名统计 | `shop_dishes` 独立表，可以按菜查店 |
 | 备份 | 拷 `db.json` | `mysqldump` 一条命令，可定时、可异地 |
-| 要不要装东西 | 零依赖，`node server.js` 就跑 | 需要 MySQL + `npm install`（`mysql2` + `sharp` 两个包） |
+| 要不要装东西 | 零依赖，`node server.js` 就跑 | 需要 MySQL + `npm install`（只有一个包 `mysql2`） |
 
 结论：数据量小、只有两三个人用，JSON 版够用；一旦要多人同时编辑、要按菜名搜索、
 要长期备份，MySQL 版更稳。页面本身也从「卡片列个表」升级成了可搜索、可筛选、
@@ -50,7 +50,7 @@
 web-mysql/
 ├── server.js              HTTP 服务：REST API + 静态页 + 图片上传
 ├── db.js                  MySQL 连接池与全部 SQL（唯一需要看 SQL 的地方）
-├── package.json           mysql2 + sharp 两个运行依赖
+├── package.json           只有 mysql2 一个依赖
 ├── .env.example           复制成 .env 再改
 ├── sql/
 │   ├── schema.sql         建库建表 + 视图（可重复执行）
@@ -196,7 +196,7 @@ FROM shops GROUP BY category ORDER BY n DESC;
 | POST | `/api/upload` | 公开* | `multipart/form-data`，字段名 `file`，返回 `{url:"/files/xxx.jpg"}`；`PUBLIC_ADD=0` 时需口令 |
 | DELETE | `/api/upload?url=` | 口令 | 删除图片（被引用时返回 409） |
 | POST | `/api/admin/verify` | 口令 | 管理端登录校验 |
-| GET | `/files/<name>?w=` | 公开 | 图片；带 `?w=640` 返回按宽度缩放的缓存版（档位 160/320/640/1280/1920，原图保留不压缩） |
+| GET | `/files/<name>` | 公开 | 图片原图 |
 
 `curl` 自测：
 
@@ -371,9 +371,8 @@ npm start
   大小限制、频率限制和 `Content-Type` 校验；上传目录不要开目录浏览。
 - **并发**：单进程 Node 足够几千 QPS；真要多进程，用 `pm2 -i max` 起，注意 `uploads`
   要落在共享盘。
-- **不支持**：图片去重、多用户权限、软删除。
-- **图片加速**：`sharp` 按 `?w=` 档位（160/320/640/1280/1920）即时生成缩放图并缓存到
-  `uploads/.cache/`，列表与详情都拉小图，原图仍保留不压缩；未安装 `sharp` 时自动回退原图。
+- **不支持**：图片去重、缩略图、多用户权限、软删除。需要缩略图可加 `sharp` 生成一列 `thumb`，
+  原图不受影响（`shop_images.url` 不动）。
 
 ---
 

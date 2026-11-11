@@ -1,6 +1,6 @@
 {
   "name": "canyin-mysql-web",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "private": true,
   "description": "餐饮图鉴 Web 版：Node + MySQL（前台图鉴 + 管理端 + 原图上传）",
   "main": "server.js",
@@ -14,7 +14,6 @@
     "db:demo": "node scripts/init-db.js --seed"
   },
   "dependencies": {
-    "mysql2": "^3.11.3",
-    "sharp": "^0.35.5"
+    "mysql2": "^3.11.3"
   }
 }
