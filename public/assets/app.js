@@ -31,8 +31,13 @@ function coverTag(url, name, cls) {
   const ch = esc((name || "食").slice(0, 1));
   return '<div class="' + (cls || "cover") + '">' +
     '<div class="ph">' + ch + "</div>" +
-    (url ? '<img src="' + esc(url) + '" alt="' + esc(name) + '" loading="lazy" onerror="this.remove()">' : "") +
+    (url ? '<img src="' + esc(imgSrc(url, 640)) + '" alt="' + esc(name) + '" loading="lazy" onerror="this.remove()">' : "") +
     "</div>";
+}
+/* 本地图片追加缩放参数（?w=），外链原样返回 */
+function imgSrc(u, w) {
+  if (!u || !w || !/^\/files\//.test(u)) return u;
+  return u + "?w=" + w;
 }
 
 function toast(msg, kind) {
@@ -193,8 +198,8 @@ function detailHTML(s) {
   const n = imgs.length;
   const track = n
     ? '<div class="gal-track" id="galTrack">' + imgs.map((u, i) =>
-        '<div class="gal-slide"><img src="' + esc(u) + '" alt="' + esc(s.name) + " 图 " + (i + 1) + '"' +
-        (i > 1 ? ' loading="lazy"' : "") + ' draggable="false" onerror="this.parentNode.style.display=\'none\'"></div>'
+        '<div class="gal-slide"><img src="' + esc(imgSrc(u, 1280)) + '" alt="' + esc(s.name) + " 图 " + (i + 1) + '"' +
+        ' draggable="false" onerror="this.parentNode.style.display=\'none\'"></div>'
       ).join("") + "</div>"
     : '<div class="ph-main">' + esc((s.name || "食").slice(0, 1)) + "</div>";
   const arrows = n > 1
@@ -210,7 +215,7 @@ function detailHTML(s) {
   const main = '<div class="gal-main" id="galMain">' + track + arrows + dots + count + "</div>";
   const thumbs = n > 1
     ? '<div class="thumbs" id="galThumbs">' + imgs.map((u, i) =>
-        '<img src="' + esc(u) + '" alt="图 ' + (i + 1) + '" class="' + (i === 0 ? "on" : "") +
+        '<img src="' + esc(imgSrc(u, 320)) + '" alt="图 ' + (i + 1) + '" class="' + (i === 0 ? "on" : "") +
         '" data-i="' + i + '" onerror="this.remove()">').join("") + "</div>"
     : "";
 
@@ -283,7 +288,7 @@ function galStop() {
 function galRestart() {
   galStop();
   if (!gal || gal.n < 2) return;
-  gal.timer = setInterval(() => { if (!gal.paused) galGo(gal.idx + 1); }, 3800);
+  gal.timer = setInterval(() => { if (!gal.paused) galGo(gal.idx + 1); }, 1000);
 }
 
 function initCarousel(n) {
@@ -481,7 +486,7 @@ function renderAddImgs() {
   const grid = $("#af_imgGrid");
   if (!grid) return;
   grid.innerHTML = addImages.map((u, i) =>
-    '<div class="img-item"><img src="' + esc(u) + '" alt="" title="点击设为封面" data-acover="' + i +
+    '<div class="img-item"><img src="' + esc(imgSrc(u, 320)) + '" alt="" title="点击设为封面" data-acover="' + i +
       '" style="cursor:pointer" onerror="this.parentNode.style.opacity=.35">' +
       (i === 0 ? '<span class="cover-flag">封面</span>' : "") +
       '<button type="button" data-aimg="' + i + '" title="移除">×</button></div>'

@@ -30,6 +30,12 @@ const path = require("path");
 const crypto = require("crypto");
 const db = require("./db");
 
+// sharp 用于按需生成缩放图（未安装或加载失败时自动回退原图，不影响服务）
+let sharp = null;
+try { sharp = require("sharp"); } catch (_) { sharp = null; }
+// 允许的缩放宽度档位：请求值向上取最近的档位，避免缓存目录被任意参数撑爆
+const WIDTH_STEPS = [160, 320, 640, 1280, 1920];
+
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || "0.0.0.0";
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "change-me";
@@ -38,6 +44,7 @@ const PUBLIC_ADD = !/^(0|false|no|off)$/i.test(String(process.env.PUBLIC_ADD || 
 const ROOT = __dirname;
 const PUBLIC_DIR = path.join(ROOT, "public");
 const UPLOAD_DIR = path.join(ROOT, "uploads");
+const CACHE_DIR = path.join(UPLOAD_DIR, ".cache");
 const MAX_BODY = 64 * 1024 * 1024; // 单次 64MB，够放手机原图
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -330,13 +337,38 @@ async function handle(req, res) {
     return json(res, 200, { ok: true });
   }
 
-  /* ---- 图片 ---- */
+  /* ---- 图片（原图 + 可选 ?w= 缩放缓存版） ---- */
   if (p.startsWith("/files/")) {
     const name = p.slice("/files/".length);
     if (!/^[A-Za-z0-9._-]+$/.test(name)) return fail(res, 400, "参数不合法");
-    const file = path.join(UPLOAD_DIR, name);
-    if (!fs.existsSync(file)) return fail(res, 404, "文件不存在");
-    return sendFile(res, file, "public, max-age=31536000, immutable");
+    const orig = path.join(UPLOAD_DIR, name);
+    if (!fs.existsSync(orig)) return fail(res, 404, "文件不存在");
+
+    // ?w=640：返回按宽度缩放的缓存版（首次访问时生成，之后直接读缓存）
+    let w = Number(url.searchParams.get("w")) || 0;
+    if (w > 0) w = WIDTH_STEPS.find(s => s >= w) || WIDTH_STEPS[WIDTH_STEPS.length - 1];
+    if (!sharp || !w || !/\.(jpe?g|png|webp|gif|tiff?|avif|heic)$/i.test(name))
+      return sendFile(res, orig, "public, max-age=31536000, immutable");
+
+    const cacheDir = path.join(CACHE_DIR, "w" + w);
+    const cached = path.join(cacheDir, name);
+    try {
+      if (!fs.existsSync(cached)) {
+        fs.mkdirSync(cacheDir, { recursive: true });
+        const tmp = path.join(cacheDir, "." + Date.now() + "." + crypto.randomBytes(4).toString("hex") + ".tmp");
+        let pipe = sharp(orig).rotate().resize({ width: w, withoutEnlargement: true });
+        pipe = /\.png$/i.test(name) ? pipe.png({ compressionLevel: 9 }) : pipe.jpeg({ quality: 82 });
+        await pipe.toFile(tmp);
+        try { fs.renameSync(tmp, cached); }
+        catch (_) { if (!fs.existsSync(cached)) fs.copyFileSync(tmp, cached); }
+        fs.existsSync(tmp) && fs.rmSync(tmp, { force: true });
+      }
+      return sendFile(res, cached, "public, max-age=31536000, immutable");
+    } catch (e) {
+      // 缩放失败（损坏图、不支持格式等）回退原图
+      console.warn("[resize]", name, "w=" + w, "→", e.message);
+      return sendFile(res, orig, "public, max-age=31536000, immutable");
+    }
   }
 
   /* ---- 静态页面 ---- */
@@ -352,6 +384,11 @@ function removeLocalFile(u) {
   if (!/^[A-Za-z0-9._-]+$/.test(name)) return;
   const f = path.join(UPLOAD_DIR, name);
   if (f.startsWith(UPLOAD_DIR + path.sep)) fs.promises.unlink(f).catch(() => {});
+  // 同步清掉各档位的缩放缓存
+  for (const step of WIDTH_STEPS) {
+    const c = path.join(CACHE_DIR, "w" + step, name);
+    fs.promises.unlink(c).catch(() => {});
+  }
 }
 
 const server = http.createServer((req, res) => {
