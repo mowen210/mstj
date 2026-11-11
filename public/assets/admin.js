@@ -16,7 +16,7 @@ const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => (
 ));
 
 /* 本地图片换成小图（?w=），外链原样返回 */
-const imgSrc = (u, w) => (!u || !w || !/^\/files\//.test(u)) ? u : u + "?w=" + w;
+const imgSrc = (u, w) => (!u || !w || !/^\/files\//.test(u)) ? u : u + "?w=" + w + "&v=2";
 
 function toast(msg, kind) {
   const el = document.createElement("div");

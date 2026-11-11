@@ -34,10 +34,11 @@ function coverTag(url, name, cls) {
     (url ? '<img src="' + esc(imgSrc(url, 640)) + '" alt="' + esc(name) + '" onerror="coverFallback(this)">' : "") +
     "</div>";
 }
-/* 本地图片换成小图（?w=），外链原样返回；服务器没装 sharp 时 ?w= 会被忽略等价原图 */
+/* 本地图片换成小图（?w=），外链原样返回；服务器没装 sharp 时 ?w= 会被忽略等价原图。
+   v=2 用于更换图片地址签名：让浏览器弃用 v2.2.1 时代缓存的大图，重新拉取小图 */
 function imgSrc(u, w) {
   if (!u || !w || !/^\/files\//.test(u)) return u;
-  return u + "?w=" + w;
+  return u + "?w=" + w + "&v=2";
 }
 /* 封面加载失败兜底：改取该店详情的第一张图（列表 cover 与详情不一致时自动修复） */
 function coverFallback(img) {
