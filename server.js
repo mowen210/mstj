@@ -55,13 +55,14 @@ function resizeOne(name, w) {
   return new Promise((resolve, reject) => {
     const orig = path.join(UPLOAD_DIR, name);
     const dir = path.join(CACHE_DIR, "w" + w);
-    const cached = path.join(dir, name);
+    // 统一输出 WebP：照片类 PNG 用 PNG 压不下去（实测 640 宽仍 690KB），WebP 只有其约 1/10
+    const cached = path.join(dir, name + ".webp");
     if (fs.existsSync(cached)) return resolve(cached);
     fs.mkdirSync(dir, { recursive: true });
     const tmp = path.join(dir, "." + Date.now() + crypto.randomBytes(3).toString("hex") + ".tmp");
-    let pipe = sharp(orig).rotate().resize({ width: w, withoutEnlargement: true });
-    pipe = /\.png$/i.test(name) ? pipe.png({ compressionLevel: 9 }) : pipe.jpeg({ quality: 82 });
-    pipe.toFile(tmp)
+    sharp(orig).rotate().resize({ width: w, withoutEnlargement: true })
+      .webp({ quality: 82 })
+      .toFile(tmp)
       .then(() => {
         try { fs.renameSync(tmp, cached); }
         catch (_) { if (!fs.existsSync(cached)) fs.copyFileSync(tmp, cached); }

@@ -1,6 +1,6 @@
 {
   "name": "canyin-mysql-web",
-  "version": "2.2.6",
+  "version": "2.2.7",
   "private": true,
   "description": "餐饮图鉴 Web 版：Node + MySQL（前台图鉴 + 管理端 + 原图上传）",
   "main": "server.js",

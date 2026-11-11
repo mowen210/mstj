@@ -35,10 +35,10 @@ function coverTag(url, name, cls) {
     "</div>";
 }
 /* 本地图片换成小图（?w=），外链原样返回；服务器没装 sharp 时 ?w= 会被忽略等价原图。
-   v=2 用于更换图片地址签名：让浏览器弃用 v2.2.1 时代缓存的大图，重新拉取小图 */
+   v=3：小图统一转 WebP，弃用旧签名下缓存的大图 */
 function imgSrc(u, w) {
   if (!u || !w || !/^\/files\//.test(u)) return u;
-  return u + "?w=" + w + "&v=2";
+  return u + "?w=" + w + "&v=3";
 }
 /* 封面加载失败兜底：改取该店详情的第一张图（列表 cover 与详情不一致时自动修复） */
 function coverFallback(img) {
@@ -51,7 +51,7 @@ function coverFallback(img) {
     .then(r => (r.ok ? r.json() : null))
     .then(s => {
       const u = s && s.images && s.images[0];
-      if (u && u !== img.getAttribute("src")) img.src = u;
+      if (u && u !== img.getAttribute("src")) img.src = imgSrc(u, 640);
       else img.remove();
     })
     .catch(() => img.remove());
