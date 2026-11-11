@@ -179,6 +179,7 @@ async function openDetail(id) {
     const s = await r.json();
     if (!r.ok) throw new Error(s.error || "打不开");
     sheet.innerHTML = detailHTML(s);
+    detailShop = s;
     initCarousel((s.images || []).length);
     if (location.hash !== "#" + s.id) history.replaceState(null, "", "#" + s.id);
   } catch (e) {
@@ -206,8 +207,11 @@ function detailHTML(s) {
         '<span class="' + (i === 0 ? "on" : "") + '" data-i="' + i + '" role="button" aria-label="第 ' + (i + 1) + ' 张"></span>'
       ).join("") + "</div>"
     : "";
-  const count = n > 1 ? '<span class="gal-count" id="galCount">1 / ' + n + "</span>" : "";
-  const main = '<div class="gal-main" id="galMain">' + track + arrows + dots + count + "</div>";
+  const meta = n > 1
+    ? '<div class="gal-meta"><span class="gal-count" id="galCount">1 / ' + n + "</span>" +
+      '<button class="gal-cover-btn" id="galCoverBtn" type="button" title="把当前图片设为首页封面">设为封面</button></div>'
+    : "";
+  const main = '<div class="gal-main" id="galMain">' + track + arrows + dots + meta + "</div>";
   const thumbs = n > 1
     ? '<div class="thumbs" id="galThumbs">' + imgs.map((u, i) =>
         '<img src="' + esc(u) + '" alt="图 ' + (i + 1) + '" class="' + (i === 0 ? "on" : "") +
@@ -259,6 +263,7 @@ function closeDetail() {
 
 /* ---------- 详情画廊轮播 ---------- */
 let gal = null; // { n, idx, timer, paused }
+let detailShop = null;
 
 function galGo(i, byUser) {
   if (!gal || gal.n < 2) return;
@@ -293,6 +298,8 @@ function initCarousel(n) {
 
   $("#galPrev").addEventListener("click", () => galPrev(true));
   $("#galNext").addEventListener("click", () => galNext(true));
+  const coverBtn = $("#galCoverBtn");
+  if (coverBtn) coverBtn.addEventListener("click", setCoverFromDetail);
   $("#galDots").addEventListener("click", e => {
     const d = e.target.closest("span[data-i]");
     if (d) galGo(Number(d.dataset.i), true);
@@ -329,6 +336,62 @@ function initCarousel(n) {
   main.addEventListener("touchcancel", endTouch);
 
   galRestart();
+}
+
+/* ---------- 详情页：把当前轮播图设为首页封面 ---------- */
+async function ensureDetailToken() {
+  if (token) return token;
+  const t = (window.prompt("把这张图设为封面需要管理口令（服务器 .env 里的 ADMIN_TOKEN）") || "").trim();
+  if (!t) return null;
+  try {
+    await api("/api/admin/verify", { method: "POST", token: t });
+  } catch (e) {
+    toast(e.status === 401 ? "口令不正确" : e.message, "err");
+    return null;
+  }
+  token = t;
+  localStorage.setItem(TOKEN_KEY, t);
+  return t;
+}
+
+async function setCoverFromDetail() {
+  if (!detailShop || !gal || gal.n < 2) return;
+  const btn = $("#galCoverBtn");
+  const imgs = detailShop.images || [];
+  const cur = imgs[gal.idx];
+  if (!cur) return;
+  if (imgs[0] === cur) return toast("这张已经是封面了");
+
+  const t = await ensureDetailToken();
+  if (!t) return;
+
+  const reordered = [cur].concat(imgs.filter((_, i) => i !== gal.idx));
+  if (btn) { btn.disabled = true; btn.textContent = "设置中…"; }
+  try {
+    await api("/api/shops/" + detailShop.id, {
+      method: "PUT",
+      body: {
+        name: detailShop.name,
+        category: detailShop.category,
+        address: detailShop.address,
+        phone: detailShop.phone,
+        hours: detailShop.hours,
+        note: detailShop.note,
+        lat: detailShop.lat,
+        lng: detailShop.lng,
+        rating: detailShop.rating,
+        recommend: detailShop.recommend,
+        dishes: detailShop.dishes || [],
+        images: reordered,
+      },
+    });
+    toast("已设为封面", "ok");
+    await openDetail(detailShop.id); // 重新渲染，封面图排到第一张
+    load(); // 刷新首页卡片封面
+  } catch (e) {
+    toast("设置失败：" + e.message, "err");
+    if (btn) { btn.disabled = false; btn.textContent = "设为封面"; }
+  }
 }
 
 /* ---------- 事件 ---------- */

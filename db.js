@@ -171,6 +171,23 @@ async function listShops({ q = "", category = "", sort = "updated", page = 1, pa
 
   const ids = list.map(s => s.id);
   if (ids.length) {
+    // 封面与张数直查 shop_images（与详情 images[0] 同源同排序），
+    // 不依赖 v_shop_list 视图，避免视图口径不一致导致首页封面与详情第一张不符
+    const [imgs] = await pool.query(
+      `SELECT shop_id, url FROM shop_images WHERE shop_id IN (?)
+        ORDER BY shop_id, sort_no, id`, [ids]
+    );
+    const cover = new Map();
+    const count = new Map();
+    imgs.forEach(r => {
+      count.set(r.shop_id, (count.get(r.shop_id) || 0) + 1);
+      if (!cover.has(r.shop_id)) cover.set(r.shop_id, r.url);
+    });
+    list.forEach(s => {
+      s.cover = cover.get(s.id) || "";
+      s.imageCount = count.get(s.id) || 0;
+    });
+
     const [dishes] = await pool.query(
       `SELECT shop_id, name, price FROM shop_dishes
         WHERE shop_id IN (?) ORDER BY shop_id, sort_no, id`, [ids]

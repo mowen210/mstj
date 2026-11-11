@@ -241,11 +241,20 @@ main { max-width: 1180px; margin: 0 auto; padding: 8px 22px 60px; }
   cursor: pointer; transition: .18s;
 }
 .gal-dots span.on { background: var(--gold); width: 20px; }
-.gal-count {
+.gal-meta {
   position: absolute; right: 12px; bottom: 11px; z-index: 2;
+  display: flex; align-items: center; gap: 8px;
+}
+.gal-count {
   background: rgba(24, 18, 14, .55); color: #fff; border-radius: 999px;
   padding: 3px 10px; font-size: 11.5px; font-variant-numeric: tabular-nums;
 }
+.gal-cover-btn {
+  border: 0; background: rgba(24, 18, 14, .55); color: #fff; border-radius: 999px;
+  padding: 3px 11px; font-size: 11.5px; line-height: 1.5; transition: .16s;
+}
+.gal-cover-btn:hover { background: var(--wine); }
+.gal-cover-btn[disabled] { opacity: .6; cursor: not-allowed; }
 .gallery .ph-main {
   position: absolute; inset: 0; display: grid; place-items: center;
   font-family: var(--serif); font-size: 64px; color: rgba(255, 255, 255, .32);
@@ -416,5 +425,5 @@ footer.site b { color: var(--ink-2); font-weight: 600; }
   .overlay { padding: 10px; }
   .gal-nav { width: 32px; height: 32px; font-size: 19px; }
   .gal-dots { bottom: 9px; padding: 0 52px; }
-  .gal-count { bottom: 9px; }
+  .gal-meta { bottom: 9px; }
 }
