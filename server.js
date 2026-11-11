@@ -38,9 +38,67 @@ const PUBLIC_ADD = !/^(0|false|no|off)$/i.test(String(process.env.PUBLIC_ADD || 
 const ROOT = __dirname;
 const PUBLIC_DIR = path.join(ROOT, "public");
 const UPLOAD_DIR = path.join(ROOT, "uploads");
+const CACHE_DIR = path.join(UPLOAD_DIR, ".cache");
 const MAX_BODY = 64 * 1024 * 1024; // 单次 64MB，够放手机原图
+// sharp 用于生成小图：上传时与启动时预生成，浏览时直接读缓存（未安装则回退原图并打警告）
+let sharp = null;
+try { sharp = require("sharp"); } catch (_) { sharp = null; }
+const WIDTH_STEPS = [320, 640, 1280];
+const RESIZE_EXTS = /\.(jpe?g|png|webp)$/i;
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+/* ---------------- 小图预生成（磁盘缓存，缺哪个补哪个） ---------------- */
+const resizeJobs = new Map(); // name -> Promise，避免同一张图并发重复生成
+
+function resizeOne(name, w) {
+  return new Promise((resolve, reject) => {
+    const orig = path.join(UPLOAD_DIR, name);
+    const dir = path.join(CACHE_DIR, "w" + w);
+    const cached = path.join(dir, name);
+    if (fs.existsSync(cached)) return resolve(cached);
+    fs.mkdirSync(dir, { recursive: true });
+    const tmp = path.join(dir, "." + Date.now() + crypto.randomBytes(3).toString("hex") + ".tmp");
+    let pipe = sharp(orig).rotate().resize({ width: w, withoutEnlargement: true });
+    pipe = /\.png$/i.test(name) ? pipe.png({ compressionLevel: 9 }) : pipe.jpeg({ quality: 82 });
+    pipe.toFile(tmp)
+      .then(() => {
+        try { fs.renameSync(tmp, cached); }
+        catch (_) { if (!fs.existsSync(cached)) fs.copyFileSync(tmp, cached); }
+        if (fs.existsSync(tmp)) fs.rmSync(tmp, { force: true });
+        resolve(cached);
+      })
+      .catch(e => { if (fs.existsSync(tmp)) fs.rmSync(tmp, { force: true }); reject(e); });
+  });
+}
+
+function ensureResized(name, w) {
+  if (!sharp || !RESIZE_EXTS.test(name)) return Promise.resolve(null);
+  const key = name + "@" + w;
+  if (!resizeJobs.has(key)) {
+    const p = resizeOne(name, w).catch(e => {
+      console.warn("[resize]", name, "w" + w, "→", e.message);
+      return null; // 失败回退原图
+    }).finally(() => resizeJobs.delete(key));
+    resizeJobs.set(key, p);
+  }
+  return resizeJobs.get(key);
+}
+
+/* 启动时把 uploads/ 里所有图片的小图补齐（一次性的回填，不阻塞服务） */
+function backfillResized() {
+  if (!sharp) return console.warn("⚠ 未安装 sharp（npm install），页面将直接下载原图，首次打开会较慢");
+  let names;
+  try {
+    names = fs.readdirSync(UPLOAD_DIR).filter(f =>
+      RESIZE_EXTS.test(f) && fs.statSync(path.join(UPLOAD_DIR, f)).isFile());
+  } catch (_) { return; }
+  console.log("小图预生成：" + names.length + " 张图片 × " + WIDTH_STEPS.length + " 档位…");
+  (async () => {
+    for (const n of names) for (const w of WIDTH_STEPS) await ensureResized(n, w);
+    console.log("小图预生成完成，浏览时将直接命中缓存");
+  })();
+}
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -309,6 +367,9 @@ async function handle(req, res) {
     if (!MIME[ext] || !/^image\//.test(MIME[ext])) return fail(res, 400, "只支持图片：" + ext);
     const name = crypto.randomUUID().replace(/-/g, "") + ext;
     fs.writeFileSync(path.join(UPLOAD_DIR, name), file.data);
+    ensureResized(name, 320); // 上传即预生成小图（异步，不阻塞响应）
+    ensureResized(name, 640);
+    ensureResized(name, 1280);
     return json(res, 200, {
       ok: true, url: "/files/" + name, size: file.data.length, name: file.filename || name,
     });
@@ -330,13 +391,20 @@ async function handle(req, res) {
     return json(res, 200, { ok: true });
   }
 
-  /* ---- 图片 ---- */
+  /* ---- 图片（原图 + ?w= 小图，小图来自预生成缓存） ---- */
   if (p.startsWith("/files/")) {
     const name = p.slice("/files/".length);
     if (!/^[A-Za-z0-9._-]+$/.test(name)) return fail(res, 400, "参数不合法");
-    const file = path.join(UPLOAD_DIR, name);
-    if (!fs.existsSync(file)) return fail(res, 404, "文件不存在");
-    return sendFile(res, file, "public, max-age=31536000, immutable");
+    const orig = path.join(UPLOAD_DIR, name);
+    if (!fs.existsSync(orig)) return fail(res, 404, "文件不存在");
+    const IMMUTABLE = "public, max-age=31536000, immutable";
+    let w = Number(url.searchParams.get("w")) || 0;
+    if (w > 0) w = WIDTH_STEPS.find(s => s >= w) || WIDTH_STEPS[WIDTH_STEPS.length - 1];
+    if (w && sharp && RESIZE_EXTS.test(name)) {
+      const cached = await ensureResized(name, w); // 命中缓存即时返回；个别未预生成的现补
+      if (cached) return sendFile(res, cached, IMMUTABLE);
+    }
+    return sendFile(res, orig, IMMUTABLE);
   }
 
   /* ---- 静态页面 ---- */
@@ -352,6 +420,7 @@ function removeLocalFile(u) {
   if (!/^[A-Za-z0-9._-]+$/.test(name)) return;
   const f = path.join(UPLOAD_DIR, name);
   if (f.startsWith(UPLOAD_DIR + path.sep)) fs.promises.unlink(f).catch(() => {});
+  for (const w of WIDTH_STEPS) fs.promises.unlink(path.join(CACHE_DIR, "w" + w, name)).catch(() => {});
 }
 
 const server = http.createServer((req, res) => {
@@ -383,5 +452,6 @@ server.listen(PORT, HOST, async () => {
     console.warn("⚠ 数据库暂时连不上：" + (e.code || "") + " " + e.message);
     console.warn("  请检查 .env，并执行：mysql -u root -p < sql/schema.sql");
   }
+  backfillResized(); // 后台补齐所有小图，不阻塞服务启动
   if (ADMIN_TOKEN === "change-me") console.warn("⚠ ADMIN_TOKEN 还是默认值，上线前务必修改");
 });
