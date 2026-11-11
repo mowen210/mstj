@@ -31,8 +31,24 @@ function coverTag(url, name, cls) {
   const ch = esc((name || "食").slice(0, 1));
   return '<div class="' + (cls || "cover") + '">' +
     '<div class="ph">' + ch + "</div>" +
-    (url ? '<img src="' + esc(url) + '" alt="' + esc(name) + '" onerror="this.remove()">' : "") +
+    (url ? '<img src="' + esc(url) + '" alt="' + esc(name) + '" onerror="coverFallback(this)">' : "") +
     "</div>";
+}
+/* 封面加载失败兜底：改取该店详情的第一张图（列表 cover 与详情不一致时自动修复） */
+function coverFallback(img) {
+  if (img.dataset.tried) { img.remove(); return; }
+  img.dataset.tried = "1";
+  const card = img.closest(".card");
+  const id = card && card.dataset.id;
+  if (!id) { img.remove(); return; }
+  fetch("/api/shops/" + encodeURIComponent(id))
+    .then(r => (r.ok ? r.json() : null))
+    .then(s => {
+      const u = s && s.images && s.images[0];
+      if (u && u !== img.getAttribute("src")) img.src = u;
+      else img.remove();
+    })
+    .catch(() => img.remove());
 }
 
 function toast(msg, kind) {
