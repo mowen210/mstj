@@ -145,7 +145,12 @@ main { max-width: 1180px; margin: 0 auto; padding: 8px 22px 60px; }
   position: relative; aspect-ratio: 4 / 3; background: #efe3d2;
   overflow: hidden;
 }
-.cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cover img {
+  /* 绝对定位并压在占位纹样(.ph)之上：.ph 是 absolute，普通文档流的 img 会被它盖住，
+     导致图片已加载却始终显示占位字 */
+  position: absolute; inset: 0; z-index: 1;
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
 .cover .ph {
   position: absolute; inset: 0; display: grid; place-items: center;
   font-family: var(--serif); font-size: 44px; color: rgba(122, 16, 36, .28);
