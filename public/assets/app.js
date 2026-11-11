@@ -179,6 +179,7 @@ async function openDetail(id) {
     const s = await r.json();
     if (!r.ok) throw new Error(s.error || "打不开");
     sheet.innerHTML = detailHTML(s);
+    initCarousel((s.images || []).length);
     if (location.hash !== "#" + s.id) history.replaceState(null, "", "#" + s.id);
   } catch (e) {
     sheet.innerHTML = '<div style="padding:40px;text-align:center">' +
@@ -189,16 +190,28 @@ async function openDetail(id) {
 
 function detailHTML(s) {
   const imgs = s.images || [];
-  const main = '<div class="gal-main">' +
-    '<div class="ph-main">' + esc((s.name || "食").slice(0, 1)) + "</div>" +
-    (imgs.length
-      ? '<img class="main" id="mainImg" src="' + esc(imgs[0]) + '" alt="' + esc(s.name) + '" onerror="this.remove()">'
-      : "") +
-    "</div>";
-  const thumbs = imgs.length > 1
-    ? '<div class="thumbs">' + imgs.map((u, i) =>
+  const n = imgs.length;
+  const track = n
+    ? '<div class="gal-track" id="galTrack">' + imgs.map((u, i) =>
+        '<div class="gal-slide"><img src="' + esc(u) + '" alt="' + esc(s.name) + " 图 " + (i + 1) + '"' +
+        (i > 1 ? ' loading="lazy"' : "") + ' draggable="false" onerror="this.parentNode.style.display=\'none\'"></div>'
+      ).join("") + "</div>"
+    : '<div class="ph-main">' + esc((s.name || "食").slice(0, 1)) + "</div>";
+  const arrows = n > 1
+    ? '<button class="gal-nav prev" id="galPrev" type="button" aria-label="上一张">‹</button>' +
+      '<button class="gal-nav next" id="galNext" type="button" aria-label="下一张">›</button>'
+    : "";
+  const dots = n > 1
+    ? '<div class="gal-dots" id="galDots">' + imgs.map((_, i) =>
+        '<span class="' + (i === 0 ? "on" : "") + '" data-i="' + i + '" role="button" aria-label="第 ' + (i + 1) + ' 张"></span>'
+      ).join("") + "</div>"
+    : "";
+  const count = n > 1 ? '<span class="gal-count" id="galCount">1 / ' + n + "</span>" : "";
+  const main = '<div class="gal-main" id="galMain">' + track + arrows + dots + count + "</div>";
+  const thumbs = n > 1
+    ? '<div class="thumbs" id="galThumbs">' + imgs.map((u, i) =>
         '<img src="' + esc(u) + '" alt="图 ' + (i + 1) + '" class="' + (i === 0 ? "on" : "") +
-        '" data-src="' + esc(u) + '" onerror="this.remove()">').join("") + "</div>"
+        '" data-i="' + i + '" onerror="this.remove()">').join("") + "</div>"
     : "";
 
   const dishes = (s.dishes || []).length
@@ -238,9 +251,84 @@ function detailHTML(s) {
 }
 
 function closeDetail() {
+  galStop();
   $("#overlay").classList.remove("on");
   document.body.style.overflow = "";
   if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+}
+
+/* ---------- 详情画廊轮播 ---------- */
+let gal = null; // { n, idx, timer, paused }
+
+function galGo(i, byUser) {
+  if (!gal || gal.n < 2) return;
+  gal.idx = ((i % gal.n) + gal.n) % gal.n;
+  const track = $("#galTrack");
+  if (track) track.style.transform = "translateX(-" + gal.idx * 100 + "%)";
+  document.querySelectorAll("#galDots span").forEach(d =>
+    d.classList.toggle("on", Number(d.dataset.i) === gal.idx));
+  const on = document.querySelector('#galThumbs img[data-i="' + gal.idx + '"]');
+  document.querySelectorAll("#galThumbs img").forEach(t => t.classList.toggle("on", t === on));
+  if (on && on.scrollIntoView)
+    on.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+  const c = $("#galCount");
+  if (c) c.textContent = gal.idx + 1 + " / " + gal.n;
+  if (byUser) galRestart();
+}
+function galNext(byUser) { if (gal) galGo(gal.idx + 1, byUser); }
+function galPrev(byUser) { if (gal) galGo(gal.idx - 1, byUser); }
+function galStop() {
+  if (gal && gal.timer) { clearInterval(gal.timer); gal.timer = null; }
+}
+function galRestart() {
+  galStop();
+  if (!gal || gal.n < 2) return;
+  gal.timer = setInterval(() => { if (!gal.paused) galGo(gal.idx + 1); }, 3800);
+}
+
+function initCarousel(n) {
+  galStop();
+  gal = { n, idx: 0, timer: null, paused: false };
+  if (n < 2) return;
+
+  $("#galPrev").addEventListener("click", () => galPrev(true));
+  $("#galNext").addEventListener("click", () => galNext(true));
+  $("#galDots").addEventListener("click", e => {
+    const d = e.target.closest("span[data-i]");
+    if (d) galGo(Number(d.dataset.i), true);
+  });
+
+  const main = $("#galMain");
+  main.addEventListener("mouseenter", () => { gal.paused = true; });
+  main.addEventListener("mouseleave", () => { gal.paused = false; });
+
+  /* 手势左右滑动 */
+  let sx = 0, dx = 0, touching = false;
+  main.addEventListener("touchstart", e => {
+    touching = true;
+    sx = e.touches[0].clientX;
+    dx = 0;
+    gal.paused = true;
+    $("#galTrack").classList.add("drag");
+  }, { passive: true });
+  main.addEventListener("touchmove", e => {
+    if (!touching) return;
+    dx = e.touches[0].clientX - sx;
+    $("#galTrack").style.transform =
+      "translateX(calc(-" + gal.idx * 100 + "% + " + dx + "px))";
+  }, { passive: true });
+  const endTouch = () => {
+    if (!touching) return;
+    touching = false;
+    $("#galTrack").classList.remove("drag");
+    if (Math.abs(dx) > 44) galGo(gal.idx + (dx < 0 ? 1 : -1), true);
+    else galGo(gal.idx, true);
+    gal.paused = false;
+  };
+  main.addEventListener("touchend", endTouch);
+  main.addEventListener("touchcancel", endTouch);
+
+  galRestart();
 }
 
 /* ---------- 事件 ---------- */
@@ -263,18 +351,19 @@ $("#grid").addEventListener("click", e => {
   if (card) openDetail(card.dataset.id);
 });
 $("#overlay").addEventListener("click", e => {
-  if (e.target.id === "overlay") closeDetail();
+  if (e.target.id === "overlay") { closeDetail(); return; }
   const t = e.target.closest(".thumbs img");
-  if (t) {
-    const img = $("#mainImg");
-    if (img) img.src = t.dataset.src;
-    document.querySelectorAll(".thumbs img").forEach(x => x.classList.toggle("on", x === t));
-  }
+  if (t) galGo(Number(t.dataset.i), true);
 });
 document.addEventListener("keydown", e => {
-  if (e.key !== "Escape") return;
-  if ($("#addDrawer").classList.contains("on")) { closeAdd(); return; }
-  closeDetail();
+  if ($("#addDrawer").classList.contains("on")) {
+    if (e.key === "Escape") closeAdd();
+    return;
+  }
+  if (!$("#overlay").classList.contains("on")) return;
+  if (e.key === "Escape") closeDetail();
+  else if (e.key === "ArrowLeft") galPrev(true);
+  else if (e.key === "ArrowRight") galNext(true);
 });
 
 /* ---------- 前台登记商户 ---------- */
@@ -327,7 +416,7 @@ function openAdd() {
         '<button class="btn sm" type="button" id="af_addDish" style="align-self:flex-start">＋ 再加一道</button>' +
       "</div>" +
       '<div class="field"><label>备注</label><textarea id="af_note" maxlength="1000" placeholder="什么时候去不用排队、什么必点…"></textarea></div>' +
-      '<div class="field"><label>照片（可多选，第一张作封面）</label>' +
+      '<div class="field"><label>照片（可多选，第一张作封面；点小图可换封面）</label>' +
         '<div class="img-grid" id="af_imgGrid"></div>' +
         '<div style="margin-top:9px">' +
           '<label class="btn sm" style="display:inline-flex;align-items:center;margin:0">上传 / 拍照<input id="af_file" type="file" accept="image/*" multiple hidden></label>' +
@@ -392,7 +481,8 @@ function renderAddImgs() {
   const grid = $("#af_imgGrid");
   if (!grid) return;
   grid.innerHTML = addImages.map((u, i) =>
-    '<div class="img-item"><img src="' + esc(u) + '" alt="" onerror="this.parentNode.style.opacity=.35">' +
+    '<div class="img-item"><img src="' + esc(u) + '" alt="" title="点击设为封面" data-acover="' + i +
+      '" style="cursor:pointer" onerror="this.parentNode.style.opacity=.35">' +
       (i === 0 ? '<span class="cover-flag">封面</span>' : "") +
       '<button type="button" data-aimg="' + i + '" title="移除">×</button></div>'
   ).join("") || '<span class="hint">还没有照片</span>';
@@ -562,12 +652,23 @@ async function saveAdd() {
   }
 }
 
-/* 删除待上传照片 / 关闭登记抽屉 */
+/* 删除待上传照片 / 点图设为封面 / 关闭登记抽屉 */
 document.addEventListener("click", e => {
   const del = e.target.closest("[data-aimg]");
   if (del) {
     addImages.splice(Number(del.dataset.aimg), 1);
     renderAddImgs();
+    return;
+  }
+  const cov = e.target.closest("[data-acover]");
+  if (cov) {
+    const i = Number(cov.dataset.acover);
+    if (i > 0) {
+      const [u] = addImages.splice(i, 1);
+      addImages.unshift(u);
+      renderAddImgs();
+      toast("已设为封面", "ok");
+    }
   }
 });
 $("#addDrawer").addEventListener("click", e => {

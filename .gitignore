@@ -2,6 +2,7 @@ node_modules/
 .env
 uploads/
 *.log
+.idea/
 
 # local cache / temp files
 Python/_cache/
